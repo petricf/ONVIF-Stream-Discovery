@@ -1,0 +1,32 @@
+# Build artifacts
+build/
+Makefile
+Makefile.Release
+Makefile.Debug
+*.o
+*.moc
+moc_*.cpp
+moc_*.o
+ui_*.h
+qrc_*.cpp
+*.AppImage
+appimages/
+
+# Qt
+.qmake.stash
+*.pro.user
+*.pro.user.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System
+.DS_Store
+Thumbs.db
+
+# AppImage build
+AppDir/
+linuxdeploy-*.AppImage
