@@ -1,5 +1,7 @@
 # ONVIF Stream Discovery (Qt6)
 
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 A Qt6 application for discovering ONVIF camera stream URLs (RTSP and JPEG snapshots) using standard ONVIF SOAP API calls.
 
 ## Features
@@ -168,5 +170,10 @@ onvif_stream_discover/
 ├── WsSecurity.h/cpp   # WS-Security UsernameToken (PasswordDigest)
 ├── StreamInfo.h       # Data structures
 ├── onvif_stream_discover.pro # qmake project file
+├── LICENSE            # MIT License
 └── README.md          # This file
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
