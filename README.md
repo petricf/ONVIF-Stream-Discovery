@@ -69,14 +69,14 @@ make -j$(nproc)
 ```
 Opens a window with configuration fields and results tables.
 
-### CLI Mode (matches PHP script arguments)
+### CLI Mode
 
 **Named options:**
 ```bash
 ./onvif_stream_discover --cli --ip <CAMERA_IP> --user <USERNAME> --password <PASSWORD> --port <PORT> --timeout <SECONDS>
 ```
 
-**Positional arguments (PHP-style):**
+**Positional arguments:**
 ```bash
 ./onvif_stream_discover <CAMERA_IP> <USERNAME> <PASSWORD> --port=<PORT> --timeout=<SECONDS>
 ```
