@@ -18,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_client, &OnvifClient::errorOccurred, this, &MainWindow::onErrorOccurred);
     connect(ui->discoverButton, &QPushButton::clicked, this, &MainWindow::onDiscoverClicked);
 
-    setWindowTitle("ONVIF Stream Discovery");
+    setWindowTitle(tr("ONVIF Stream Discovery"));
     resize(1100, 800);
 }
 
@@ -55,7 +55,7 @@ void MainWindow::onDiscoverClicked()
     int timeout = ui->timeoutSpin->value();
 
     if (ip.isEmpty() || user.isEmpty() || pass.isEmpty()) {
-        QMessageBox::warning(this, "Missing Information", "Please fill in IP, username, and password.");
+        QMessageBox::warning(this, tr("Missing Information"), tr("Please fill in IP, username, and password."));
         return;
     }
 
@@ -71,18 +71,18 @@ void MainWindow::onDiscoverClicked()
 
     resetUI();
     ui->discoverButton->setEnabled(false);
-    ui->discoverButton->setText("Discovering...");
+    ui->discoverButton->setText(tr("Discovering..."));
     ui->progressBar->setVisible(true);
 
-    addLog(QString("== ONVIF stream discovery for %1 ==").arg(ip));
-    addLog(QString("Device service: %1").arg(m_deviceUrl));
+    addLog(tr("== ONVIF stream discovery for %1 ==").arg(ip));
+    addLog(tr("Device service: %1").arg(m_deviceUrl));
     addLog("");
 
     m_client->setCredentials(user, pass);
     m_client->setTimeout(timeout);
 
     // Step 1: Get device time (unauthenticated)
-    addLog("-- Checking device reachability --");
+    addLog(tr("-- Checking device reachability --"));
     m_client->getSystemDateAndTime(m_deviceUrl,
         [this](bool success, const QString &result) {
             onDeviceTimeResult(success, result);
@@ -92,14 +92,14 @@ void MainWindow::onDiscoverClicked()
 void MainWindow::onDeviceTimeResult(bool success, const QString &result)
 {
     if (success && !result.isEmpty() && !result.startsWith("Could not")) {
-        addLog(QString("  Device UTC time: %1").arg(result));
+        addLog(tr("  Device UTC time: %1").arg(result));
     } else {
-        addLog(QString("  (could not read device time: %1)").arg(result));
+        addLog(tr("  (could not read device time: %1)").arg(result));
     }
     addLog("");
 
     // Step 2: Get capabilities
-    addLog("-- GetCapabilities (locating Media service) --");
+    addLog(tr("-- GetCapabilities (locating Media service) --"));
     m_client->getCapabilities(m_deviceUrl,
         [this](bool success, const QString &result) {
             onCapabilitiesResult(success, result);
@@ -110,17 +110,17 @@ void MainWindow::onCapabilitiesResult(bool success, const QString &result)
 {
     if (success) {
         m_mediaUrl = result;
-        addLog(QString("  Media service XAddr: %1").arg(m_mediaUrl));
+        addLog(tr("  Media service XAddr: %1").arg(m_mediaUrl));
         addLog("");
 
         // Step 3: Get profiles
-        addLog("-- GetProfiles --");
+        addLog(tr("-- GetProfiles --"));
         m_client->getProfiles(m_mediaUrl,
             [this](bool success, const QVector<ProfileInfo> &profiles, const QString &error) {
                 onProfilesResult(success, profiles, error);
             });
     } else {
-        addLog(QString("  GetCapabilities failed: %1").arg(result));
+        addLog(tr("  GetCapabilities failed: %1").arg(result));
         addLog("");
         onErrorOccurred(result);
     }
@@ -133,20 +133,20 @@ void MainWindow::onProfilesResult(bool success, const QVector<ProfileInfo> &prof
         updateProfileTable(profiles);
 
         for (const auto &p : profiles) {
-            addLog(QString("  Profile token: %1  (name: %2)").arg(p.token, p.name));
-            addLog(QString("    Video: %1").arg(formatVideoInfo(p.video)));
+            addLog(tr("  Profile token: %1  (name: %2)").arg(p.token, p.name));
+            addLog(tr("    Video: %1").arg(formatVideoInfo(p.video)));
         }
         addLog("");
 
         // Step 4 & 5: Get stream and snapshot URIs for each profile
-        addLog("-- GetStreamUri / GetSnapshotUri per profile --");
+        addLog(tr("-- GetStreamUri / GetSnapshotUri per profile --"));
         m_pendingStreamRequests = profiles.size() * 2;
         m_streamResults.clear();
         m_streamResults.resize(profiles.size());
 
         for (int i = 0; i < profiles.size(); ++i) {
             const ProfileInfo &profile = profiles[i];
-            addLog(QString("  [%1] token=%2").arg(profile.name, profile.token));
+            addLog(tr("  [%1] token=%2").arg(profile.name, profile.token));
 
             m_client->getStreamUri(m_mediaUrl, profile.token,
                 [this, i, profile](bool success, const QString &uri, const QString &error) {
@@ -183,10 +183,10 @@ void MainWindow::onStreamUriResult(const QString &profileToken, bool success, co
         if (success && !uri.isEmpty()) {
             result.rtspUriRaw = uri;
             result.rtspUri = withCredentials(uri);
-            addLog(QString("    RTSP:     %1").arg(maskUrl(result.rtspUri)));
-            addLog(QString("    (raw, no creds): %1").arg(uri));
+            addLog(tr("    RTSP:     %1").arg(maskUrl(result.rtspUri)));
+            addLog(tr("    (raw, no creds): %1").arg(uri));
         } else {
-            addLog(QString("    RTSP:     not returned (%1)").arg(err));
+            addLog(tr("    RTSP:     not returned (%1)").arg(err));
         }
     }
 
@@ -208,7 +208,7 @@ void MainWindow::onSnapshotUriResult(const QString &profileToken, bool success, 
 
         if (success && !uri.isEmpty()) {
             result.snapshotUri = withCredentials(uri);
-            addLog(QString("    Snapshot: %1").arg(maskUrl(result.snapshotUri)));
+            addLog(tr("    Snapshot: %1").arg(maskUrl(result.snapshotUri)));
         } else {
             // Silently ignore missing snapshot URI
         }
@@ -225,26 +225,26 @@ void MainWindow::checkStreamRequestsComplete()
         updateUrlTable();
 
         addLog("");
-        addLog("== Summary ==");
+        addLog(tr("== Summary =="));
         bool anyResults = false;
         for (const StreamResult &result : m_streamResults) {
             if (!result.rtspUri.isEmpty()) {
                 anyResults = true;
-                addLog(QString("- %1: %2").arg(result.profileName, maskUrl(result.rtspUri)));
-                addLog(QString("    %1").arg(formatVideoInfo(result.video)));
+                addLog(tr("- %1: %2").arg(result.profileName, maskUrl(result.rtspUri)));
+                addLog(tr("    %1").arg(formatVideoInfo(result.video)));
             }
         }
 
         if (!anyResults) {
-            addLog("No RTSP stream URIs were returned. Double-check credentials and that");
-            addLog("the ONVIF service path/port are correct for this device.");
+            addLog(tr("No RTSP stream URIs were returned. Double-check credentials and that"));
+            addLog(tr("the ONVIF service path/port are correct for this device."));
         } else {
             addLog("");
-            addLog("Use these URLs directly in VLC, ffmpeg, or your NVR/recording software.");
+            addLog(tr("Use these URLs directly in VLC, ffmpeg, or your NVR/recording software."));
         }
 
         ui->discoverButton->setEnabled(true);
-        ui->discoverButton->setText("Discover Streams");
+        ui->discoverButton->setText(tr("Discover Streams"));
         ui->progressBar->setVisible(false);
     }
 }
@@ -335,7 +335,7 @@ QString MainWindow::maskUrl(const QString &url)
 QString MainWindow::formatVideoInfo(const VideoEncoderConfig &video)
 {
     if (!video.isValid()) {
-        return "(no VideoEncoderConfiguration in profile — device may not expose it here)";
+        return tr("(no VideoEncoderConfiguration in profile — device may not expose it here)");
     }
 
     QStringList parts;
@@ -343,26 +343,26 @@ QString MainWindow::formatVideoInfo(const VideoEncoderConfig &video)
         parts << QString("%1x%2").arg(video.width).arg(video.height);
     }
     if (video.fps > 0) {
-        parts << QString("%1 fps").arg(video.fps);
+        parts << tr("%1 fps").arg(video.fps);
     }
     if (!video.encoding.isEmpty()) {
         QString codec = video.encoding;
         if (!video.codecProfile.isEmpty()) {
-            codec += QString(" (%1)").arg(video.codecProfile);
+            codec += tr(" (%1)").arg(video.codecProfile);
         }
         parts << codec;
     }
     if (video.bitrateKbps > 0) {
-        parts << QString("%1 kbps").arg(video.bitrateKbps);
+        parts << tr("%1 kbps").arg(video.bitrateKbps);
     }
     if (video.govLength > 0) {
-        parts << QString("GOV %1").arg(video.govLength);
+        parts << tr("GOV %1").arg(video.govLength);
     }
     if (!video.quality.isEmpty()) {
-        parts << QString("quality %1").arg(video.quality);
+        parts << tr("quality %1").arg(video.quality);
     }
 
-    return parts.isEmpty() ? "(VideoEncoderConfiguration present but no fields populated)" : parts.join(", ");
+    return parts.isEmpty() ? tr("(VideoEncoderConfiguration present but no fields populated)") : parts.join(", ");
 }
 
 QString MainWindow::withCredentials(const QString &uri)
@@ -389,10 +389,10 @@ void MainWindow::resetUI()
 
 void MainWindow::onErrorOccurred(const QString &message)
 {
-    addLog(QString("ERROR: %1").arg(message));
-    QMessageBox::critical(this, "Error", message);
+    addLog(tr("ERROR: %1").arg(message));
+    QMessageBox::critical(this, tr("Error"), message);
     ui->discoverButton->setEnabled(true);
-    ui->discoverButton->setText("Discover Streams");
+    ui->discoverButton->setText(tr("Discover Streams"));
     ui->progressBar->setVisible(false);
 }
 

@@ -5,6 +5,8 @@
 #include <QDebug>
 #include <QEventLoop>
 #include <QTimer>
+#include <QTranslator>
+#include <QLocale>
 #include "MainWindow.h"
 #include "OnvifClient.h"
 #include "StreamInfo.h"
@@ -35,15 +37,15 @@ public:
             .arg(m_port)
             .arg(m_path);
 
-        qDebug() << "== ONVIF stream discovery for" << m_ip << "==";
-        qDebug() << "Device service:" << m_deviceUrl;
+        qDebug() << tr("== ONVIF stream discovery for %1 ==").arg(m_ip);
+        qDebug() << tr("Device service: %1").arg(m_deviceUrl);
         qDebug() << "";
 
         m_client->setCredentials(m_user, m_pass);
         m_client->setTimeout(m_timeout);
 
         // Step 1: Get device time (unauthenticated)
-        qDebug() << "-- Checking device reachability --";
+        qDebug() << tr("-- Checking device reachability --");
         m_client->getSystemDateAndTime(m_deviceUrl,
             [this](bool success, const QString &result) {
                 onDeviceTimeResult(success, result);
@@ -54,14 +56,14 @@ private slots:
     void onDeviceTimeResult(bool success, const QString &result)
     {
         if (success && !result.isEmpty() && !result.startsWith("Could not")) {
-            qDebug() << "  Device UTC time:" << result;
+            qDebug() << tr("  Device UTC time: %1").arg(result);
         } else {
-            qDebug() << "  (could not read device time:" << result << ")";
+            qDebug() << tr("  (could not read device time: %1)").arg(result);
         }
         qDebug() << "";
 
         // Step 2: Get capabilities
-        qDebug() << "-- GetCapabilities (locating Media service) --";
+        qDebug() << tr("-- GetCapabilities (locating Media service) --");
         m_client->getCapabilities(m_deviceUrl,
             [this](bool success, const QString &result) {
                 onCapabilitiesResult(success, result);
@@ -72,17 +74,17 @@ private slots:
     {
         if (success) {
             m_mediaUrl = result;
-            qDebug() << "  Media service XAddr:" << m_mediaUrl;
+            qDebug() << tr("  Media service XAddr: %1").arg(m_mediaUrl);
             qDebug() << "";
 
             // Step 3: Get profiles
-            qDebug() << "-- GetProfiles --";
+            qDebug() << tr("-- GetProfiles --");
             m_client->getProfiles(m_mediaUrl,
                 [this](bool success, const QVector<ProfileInfo> &profiles, const QString &error) {
                     onProfilesResult(success, profiles, error);
                 });
         } else {
-            qCritical() << "GetCapabilities failed:" << result;
+            qCritical() << tr("GetCapabilities failed: %1").arg(result);
             QCoreApplication::exit(1);
         }
     }
@@ -92,26 +94,26 @@ private slots:
         if (success) {
             m_profiles = profiles;
             if (profiles.isEmpty()) {
-                qCritical() << "No media profiles returned by the device.";
+                qCritical() << tr("No media profiles returned by the device.");
                 QCoreApplication::exit(1);
                 return;
             }
 
             for (const auto &p : profiles) {
-                qDebug() << "  Profile token:" << p.token << "  (name:" << p.name << ")";
-                qDebug() << "    Video:" << formatVideoInfo(p.video);
+                qDebug() << tr("  Profile token: %1  (name: %2)").arg(p.token, p.name);
+                qDebug() << tr("    Video: %1").arg(formatVideoInfo(p.video));
             }
             qDebug() << "";
 
             // Step 4 & 5: Get stream and snapshot URIs for each profile
-            qDebug() << "-- GetStreamUri / GetSnapshotUri per profile --";
+            qDebug() << tr("-- GetStreamUri / GetSnapshotUri per profile --");
             m_pendingRequests = profiles.size() * 2;
             m_streamResults.clear();
             m_streamResults.resize(profiles.size());
 
             for (int i = 0; i < profiles.size(); ++i) {
                 const ProfileInfo &profile = profiles[i];
-                qDebug() << "  [" << profile.name << "] token=" << profile.token;
+                qDebug() << tr("  [%1] token=%2").arg(profile.name, profile.token);
 
                 m_client->getStreamUri(m_mediaUrl, profile.token,
                     [this, i, profile](bool success, const QString &uri, const QString &error) {
@@ -147,10 +149,10 @@ private slots:
             if (success && !uri.isEmpty()) {
                 result.rtspUriRaw = uri;
                 result.rtspUri = withCredentials(uri);
-                qDebug() << "    RTSP:" << maskUrl(result.rtspUri);
-                qDebug() << "    (raw, no creds):" << uri;
+                qDebug() << tr("    RTSP:     %1").arg(maskUrl(result.rtspUri));
+                qDebug() << tr("    (raw, no creds): %1").arg(uri);
             } else {
-                qDebug() << "    RTSP:" << "not returned (" << error << ")";
+                qDebug() << tr("    RTSP:     not returned (%1)").arg(error);
             }
         }
 
@@ -172,7 +174,7 @@ private slots:
 
             if (success && !uri.isEmpty()) {
                 result.snapshotUri = withCredentials(uri);
-                qDebug() << "    Snapshot:" << maskUrl(result.snapshotUri);
+                qDebug() << tr("    Snapshot: %1").arg(maskUrl(result.snapshotUri));
             }
         }
 
@@ -190,7 +192,7 @@ private slots:
 
     void onError(const QString &message)
     {
-        qCritical() << "ERROR:" << message;
+        qCritical() << tr("ERROR: %1").arg(message);
         QCoreApplication::exit(1);
     }
 
@@ -198,27 +200,27 @@ private:
     void printSummary()
     {
         qDebug() << "";
-        qDebug() << "== Summary ==";
+        qDebug() << tr("== Summary ==");
 
         bool anyResults = false;
         for (const StreamResult &result : m_streamResults) {
             if (!result.rtspUri.isEmpty()) {
                 anyResults = true;
-                qDebug() << "- " << result.profileName;
-                qDebug() << "    RTSP:     " << maskUrl(result.rtspUri);
+                qDebug() << tr("- %1:").arg(result.profileName);
+                qDebug() << tr("    RTSP:     %1").arg(maskUrl(result.rtspUri));
                 if (!result.snapshotUri.isEmpty()) {
-                    qDebug() << "    Snapshot: " << maskUrl(result.snapshotUri);
+                    qDebug() << tr("    Snapshot: %1").arg(maskUrl(result.snapshotUri));
                 }
-                qDebug() << "    " << formatVideoInfo(result.video);
+                qDebug() << tr("    %1").arg(formatVideoInfo(result.video));
             }
         }
 
         if (!anyResults) {
-            qDebug() << "No RTSP stream URIs were returned. Double-check credentials and that";
-            qDebug() << "the ONVIF service path/port are correct for this device.";
+            qDebug() << tr("No RTSP stream URIs were returned. Double-check credentials and that");
+            qDebug() << tr("the ONVIF service path/port are correct for this device.");
         } else {
             qDebug() << "";
-            qDebug() << "Use these URLs directly in VLC, ffmpeg, or your NVR/recording software.";
+            qDebug() << tr("Use these URLs directly in VLC, ffmpeg, or your NVR/recording software.");
         }
     }
 
@@ -234,7 +236,7 @@ private:
     QString formatVideoInfo(const VideoEncoderConfig &video)
     {
         if (!video.isValid()) {
-            return "(no VideoEncoderConfiguration in profile - device may not expose it here)";
+            return tr("(no VideoEncoderConfiguration in profile - device may not expose it here)");
         }
 
         QStringList parts;
@@ -242,26 +244,26 @@ private:
             parts << QString("%1x%2").arg(video.width).arg(video.height);
         }
         if (video.fps > 0) {
-            parts << QString("%1 fps").arg(video.fps);
+            parts << tr("%1 fps").arg(video.fps);
         }
         if (!video.encoding.isEmpty()) {
             QString codec = video.encoding;
             if (!video.codecProfile.isEmpty()) {
-                codec += QString(" (%1)").arg(video.codecProfile);
+                codec += tr(" (%1)").arg(video.codecProfile);
             }
             parts << codec;
         }
         if (video.bitrateKbps > 0) {
-            parts << QString("%1 kbps").arg(video.bitrateKbps);
+            parts << tr("%1 kbps").arg(video.bitrateKbps);
         }
         if (video.govLength > 0) {
-            parts << QString("GOV %1").arg(video.govLength);
+            parts << tr("GOV %1").arg(video.govLength);
         }
         if (!video.quality.isEmpty()) {
-            parts << QString("quality %1").arg(video.quality);
+            parts << tr("quality %1").arg(video.quality);
         }
 
-        return parts.isEmpty() ? "(VideoEncoderConfiguration present but no fields populated)" : parts.join(", ");
+        return parts.isEmpty() ? tr("(VideoEncoderConfiguration present but no fields populated)") : parts.join(", ");
     }
 
     QString withCredentials(const QString &uri)
@@ -321,8 +323,13 @@ int main(int argc, char *argv[])
         // Use QCoreApplication for CLI mode
         QCoreApplication app(argc, argv);
         app.setApplicationName("ONVIF Stream Discovery");
-        app.setApplicationVersion("1.0.0");
+        app.setApplicationVersion("1.1.0");
         app.setOrganizationName("ONVIFTools");
+
+        QTranslator translator;
+        if (translator.load(":/onvif_stream_discover_de.qm")) {
+            app.installTranslator(&translator);
+        }
 
         QCommandLineParser parser;
         parser.setApplicationDescription("ONVIF Stream Discovery Tool - Qt6 Version");
@@ -390,8 +397,13 @@ int main(int argc, char *argv[])
         // Use QApplication for GUI mode
         QApplication app(argc, argv);
         app.setApplicationName("ONVIF Stream Discovery");
-        app.setApplicationVersion("1.0.0");
+        app.setApplicationVersion("1.1.0");
         app.setOrganizationName("ONVIFTools");
+
+        QTranslator translator;
+        if (translator.load(":/onvif_stream_discover_de.qm")) {
+            app.installTranslator(&translator);
+        }
 
         QCommandLineParser parser;
         parser.setApplicationDescription("ONVIF Stream Discovery Tool - Qt6 Version");

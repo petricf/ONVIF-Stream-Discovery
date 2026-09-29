@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>onvif_stream_discover_de.qm</file>
+    </qresource>
+</RCC>
